@@ -1,24 +1,30 @@
-from torch.utils import data
-import pickle
+import torch
+from torchtext import data
+from torchtext import datasets
+import random
 
 
-class TrainDataset(data.Dataset):
+def get_dataloaders(seed, args):
+    TEXT = data.Field(tokenize='spacy')
+    LABEL = data.LabelField(dtype=torch.float)
 
-    def __init__(self, file_path, transform=None):
-        with open(file_path, 'rb') as f:
-            [x, y] = pickle.load(f)
-        self.x = x
-        self.y = y
-        self.transform = transform
+    if args.dataset == 'IMDB':
+        train_data, test_data = datasets.IMDB.splits(TEXT, LABEL)
+    else:
+        train_data, test_data = datasets.SST.splits(TEXT, LABEL)
 
-    def __len__(self):
-        return self.x.shape[0]
+    train_data, valid_data = train_data.split(random_state=random.seed(seed))
 
-    def __getitem__(self, index):
-        x = self.x[index]
-        y = self.y[index]
+    TEXT.build_vocab(train_data,
+                     max_size=args.max_vocab_size,
+                     vectors="glove.6B.100d",
+                     unk_init=torch.Tensor.normal_)
 
-        if self.transform is not None:
-            x = self.transform(x)
+    LABEL.build_vocab(train_data)
 
-        return x, y
+    train_loader, valid_loader, test_loader = data.BucketIterator.splits(
+        (train_data, valid_data, test_data),
+        batch_size=args.batch_size,
+        device=args.device)
+
+    return train_loader, valid_loader, test_loader, TEXT, LABEL
