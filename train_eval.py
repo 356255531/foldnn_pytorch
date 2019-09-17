@@ -1,29 +1,27 @@
 import tqdm
 import torch
-from utils import label_2_onehot
 import numpy as np
 import pdb
 
 
-def train_single_epoch(model, loss_func, train_dl, opt, epoch, num_classes, tensor_typ):
+def train_single_epoch(model, loss_func, acc_func, train_dl, opt, epoch):
     accs = []
     losses = []
 
+    model.train()
+
     pbar = tqdm.tqdm(train_dl, total=len(train_dl))
     for batch in pbar:
-        x_t, y_t = batch
-        x_t = x_t.type(tensor_typ['long']).t()
-        y_t = y_t.unsqueeze(1).type(tensor_typ['long'])
-        y_onehot_t = label_2_onehot(num_classes, y_t, tensor_typ['long']).type(tensor_typ['float'])
+        x, y = batch
+        y = y.long()
+        preds = model(x)
+        loss = loss_func(preds, y)
 
         opt.zero_grad()
-        pred = model(x_t[:, :50])
-        loss = loss_func(pred, y_onehot_t)
         loss.backward()
         opt.step()
 
-        y_hat_t = torch.argmax(pred, dim=1).type(tensor_typ['long'])
-        acc = torch.sum(y_hat_t == y_t) / y_hat_t.shape[0]
+        acc = acc_func(preds, y)
         acc = float(acc.detach())
         accs.append(acc)
 
@@ -33,28 +31,86 @@ def train_single_epoch(model, loss_func, train_dl, opt, epoch, num_classes, tens
             'epoch: {}, train acc: {:.3f}, train loss: {:.3f}'.format(epoch + 1, np.mean(accs), np.mean(losses)))
 
 
-def evaluate(model, loss_func, eval_dl, epoch, num_classes, tensor_typ):
+def train_logic_single_epoch(model, loss_func, acc_func, train_dl, opt, epoch):
+    student_accs = []
+    teacher_accs = []
+    losses = []
+
+    model.train()
+
+    pbar = tqdm.tqdm(train_dl, total=len(train_dl))
+    for batch in pbar:
+        x, y = batch.text, batch.label
+        but_x, if_but = batch.but_text, batch.if_but
+        y = y.long()
+        if_but = if_but.long()
+        import pdb
+        pdb.set_trace()
+        student_prob, teacher_prob = model(x, [if_but], [but_x])
+        loss = loss_func(student_prob, teacher_prob, y, epoch)
+
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+        student_acc, teacher_acc = acc_func(student_prob, teacher_prob, y)
+        student_acc, teacher_acc = float(student_acc.detach()), float(teacher_acc.detach())
+        student_accs.append(student_acc)
+        teacher_accs.append(teacher_acc)
+
+        loss = float(loss.detach())
+        losses.append(loss)
+
+        pbar.set_description(
+            'epoch: {}, train student acc: {:.3f}, train teacher acc: {:.3f}, train loss: {:.3f}'.format(
+                epoch + 1, np.mean(student_accs), np.mean(teacher_accs), np.mean(losses)))
+
+
+def evaluate(model, loss_func, acc_func, eval_dl, epoch):
     model.eval()
 
-    pbar = tqdm.tqdm(eval_dl, total=len(eval_dl))
     accs = []
     losses = []
-    with torch.no_grad:
-        for batch in pbar:
-            x_t, y_t = batch
-            x_t = x_t.type(tensor_typ['long']).t()
-            y_t = y_t.unsqueeze(1).type(tensor_typ['long'])
-            y_onehot_t = label_2_onehot(num_classes, y_t, tensor_typ['long']).type(tensor_typ['float'])
 
-            pred = model(x_t)
-            loss = loss_func(pred, y_onehot_t)
+    with torch.no_grad():
+        pbar = tqdm.tqdm(eval_dl, total=len(eval_dl))
+        for batch in pbar:
+            x, y = batch
+            y = y.long()
+            preds = model(x)
+            loss = loss_func(preds, y)
             loss = float(loss.detach())
             losses.append(loss)
 
-            y_hat_t = torch.argmax(pred, dim=1).type(tensor_typ['long'])
-            acc = torch.sum(y_hat_t == y_t) / y_hat_t.shape[0]
+            acc = acc_func(preds, y)
             acc = float(acc.detach())
             accs.append(acc)
 
-        pbar.set_description(
-            'epoch: {}, eval acc: {:.3f}, eval loss: {:.3f}'.format(epoch + 1, np.mean(accs), np.mean(losses)))
+            pbar.set_description(
+                'epoch: {}, eval acc: {:.3f}, eval loss: {:.3f}'.format(epoch + 1, np.mean(accs), np.mean(losses)))
+
+
+def evaluate_logic(model, loss_func, acc_func, eval_dl, epoch):
+    model.eval()
+
+    teacher_accs = []
+    student_accs = []
+    losses = []
+
+    with torch.no_grad():
+        pbar = tqdm.tqdm(eval_dl, total=len(eval_dl))
+        for batch in pbar:
+            x, y = batch
+            y = y.long()
+            student_prob, teacher_prob = model(x)
+            loss = loss_func(student_prob, teacher_prob, y, epoch)
+            loss = float(loss.detach())
+            losses.append(loss)
+
+            student_acc, teacher_acc = acc_func(student_prob, teacher_prob, y)
+            student_acc, teacher_acc = float(student_acc.detach()), float(teacher_acc.detach())
+            student_accs.append(student_acc)
+            teacher_accs.append(teacher_acc)
+
+            pbar.set_description(
+                'epoch: {}, eval student acc: {:.3f}, eval teacher acc: {:.3f}, loss: {:.3f}'.format(epoch + 1, np.mean(student_accs), np.mean(teacher_accs), np.mean(losses)))
