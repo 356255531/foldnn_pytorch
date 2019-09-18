@@ -4,7 +4,7 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description='Image inpaiting.')
 
-    parser.add_argument('-device', type=str, default='cpu')
+    parser.add_argument('-device', type=str, default='cuda')
     parser.add_argument('-gpu_idx', type=str, default='1')
 
     parser.add_argument('-dataset', type=str, default='IMDB')

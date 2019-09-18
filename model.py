@@ -70,12 +70,18 @@ class LogiCNN(nn.Module):
         :return:
         """
         student_prob = self.student_net(x)
-        rule_distribution = self.compute_but_rule_constraints(if_rules[0], rule_xs[0])
+        rule_distribution = self.compute_but_rule_constraints(student_prob, if_rules[0], rule_xs[0])
         teacher_prob = student_prob * rule_distribution
         return student_prob, teacher_prob
 
-    def compute_but_rule_constraints(self, if_but, but_xs):
+    def compute_but_rule_constraints(self, student_prob, if_but, but_xs):
         coff = self.C * self.rule_lambda
+
+        # # Original implementation
+        # distr_neg = coff * if_but.float() * student_prob[:, :1]
+        # distr_pos = coff * if_but.float() * student_prob[:, 1:2]
+        # distr = torch.cat([distr_neg, distr_pos], dim=1)
+        # ret = torch.exp(distr)
 
         logic_prob = self.student_net(but_xs)
         sigma_pos = logic_prob[:, 1:2]
@@ -85,4 +91,5 @@ class LogiCNN(nn.Module):
         distr_neg = coff * if_but.float() * (1 - logic_truth_val_neg)
         distr_pos = coff * if_but.float() * (1 - logic_truth_val_pos)
         distr = torch.cat([distr_neg, distr_pos], dim=1)
-        return torch.exp(-distr)
+        ret = torch.exp(-distr)
+        return ret

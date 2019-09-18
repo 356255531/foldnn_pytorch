@@ -98,9 +98,11 @@ def evaluate_logic(model, loss_func, acc_func, eval_dl, epoch):
     with torch.no_grad():
         pbar = tqdm.tqdm(eval_dl, total=len(eval_dl))
         for batch in pbar:
-            x, y = batch
+            x, y = batch.text, batch.label
+            but_x, if_but = batch.but_text, batch.if_but
             y = y.long()
-            student_prob, teacher_prob = model(x)
+            if_but = if_but.long()
+            student_prob, teacher_prob = model(x, [if_but], [but_x])
             loss = loss_func(student_prob, teacher_prob, y, epoch)
             loss = float(loss.detach())
             losses.append(loss)
