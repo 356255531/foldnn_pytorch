@@ -44,8 +44,6 @@ def train_logic_single_epoch(model, loss_func, acc_func, train_dl, opt, epoch):
         but_x, if_but = batch.but_text, batch.if_but
         y = y.long()
         if_but = if_but.long()
-        import pdb
-        pdb.set_trace()
         student_prob, teacher_prob = model(x, [if_but], [but_x])
         loss = loss_func(student_prob, teacher_prob, y, epoch)
 

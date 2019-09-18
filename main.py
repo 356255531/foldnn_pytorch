@@ -94,4 +94,4 @@ def train_logicnn(argv=None):
 
 
 if __name__ == '__main__':
-    train_text_cnn()
+    train_logicnn()
