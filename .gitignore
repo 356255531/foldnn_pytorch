@@ -1,3 +1,5 @@
 .idea/
 __pycache__/
 weights/
+.data/
+.vector_cache/
