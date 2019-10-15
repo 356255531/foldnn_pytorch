@@ -23,6 +23,8 @@ class TextCNN(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
+        self.sm = nn.Softmax(dim=1)
+
     def forward(self, text):
         # text = [batch size, sent len]
 
@@ -48,9 +50,11 @@ class TextCNN(nn.Module):
 
         fc = self.fc(cat)
 
+        sm = self.sm(fc)
+
         # fc = [batch size, n_classes]
 
-        return fc
+        return sm
 
 
 class LogiCNN(nn.Module):
@@ -61,7 +65,7 @@ class LogiCNN(nn.Module):
         self.rule_lambda = rule_lambda
         self.C = C
 
-    def forward(self, x, if_rules, rule_xs):
+    def forward(self, x, y, if_rules, rule_xs, epoch):
         """
         Now only suitable for A-but-B rule
         :param x:
@@ -72,6 +76,11 @@ class LogiCNN(nn.Module):
         student_prob = self.student_net(x)
         rule_distribution = self.compute_but_rule_constraints(student_prob, if_rules[0], rule_xs[0])
         teacher_prob = student_prob * rule_distribution
+        teacher_prob = teacher_prob / torch.sum(teacher_prob, dim=1).unsqueeze(1)
+        but_text_prob = self.student_net(rule_xs[0])
+        if epoch > 1:
+            import pdb
+            pdb.set_trace()
         return student_prob, teacher_prob
 
     def compute_but_rule_constraints(self, student_prob, if_but, but_xs):

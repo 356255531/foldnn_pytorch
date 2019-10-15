@@ -44,7 +44,7 @@ def train_logic_single_epoch(model, loss_func, acc_func, train_dl, opt, epoch):
         but_x, if_but = batch.but_text, batch.if_but
         y = y.long()
         if_but = if_but.long()
-        student_prob, teacher_prob = model(x, [if_but], [but_x])
+        student_prob, teacher_prob = model(x, y, [if_but], [but_x], epoch)
         loss = loss_func(student_prob, teacher_prob, y, epoch)
 
         opt.zero_grad()
@@ -102,7 +102,7 @@ def evaluate_logic(model, loss_func, acc_func, eval_dl, epoch):
             but_x, if_but = batch.but_text, batch.if_but
             y = y.long()
             if_but = if_but.long()
-            student_prob, teacher_prob = model(x, [if_but], [but_x])
+            student_prob, teacher_prob = model(x, y, [if_but], [but_x], epoch)
             loss = loss_func(student_prob, teacher_prob, y, epoch)
             loss = float(loss.detach())
             losses.append(loss)

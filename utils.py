@@ -12,7 +12,7 @@ def parse_args():
 
     parser.add_argument('-epoch', type=int, default=10)
     parser.add_argument('-batch_size', type=float, default=64)
-    parser.add_argument('-lr', type=float, default=0.01)
+    parser.add_argument('-lr', type=float, default=10e-5)
 
     parser.add_argument('-num_filters', type=int, default=100)
     parser.add_argument('-filter_sizes', type=str, default="3,4,5")
